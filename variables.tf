@@ -1,3 +1,5 @@
+# Required variables
+
 variable "config" {
   type    = string
   default = "config.json"
@@ -18,7 +20,8 @@ variable "function_name" {
   default = "my-port-exporter-function"
 }
 
-# Optional variables for the module
+# Optional variables
+
 variable "iam_permissions" {
   type    = string
   default = "path/to/iam/roles/file"
