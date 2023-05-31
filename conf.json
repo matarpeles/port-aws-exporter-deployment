@@ -1,0 +1,168 @@
+{
+  "resources": [
+    {
+      "kind": "AWS::ECS::Service",
+      "port": {
+        "entity": {
+          "mappings": [
+            {
+              "identifier": "(.Cluster | split(\"/\")[-1]) + \"-\" + .ServiceName",
+              "title": ".ServiceName",
+              "blueprint": "ecs",
+              "properties": {
+                "link": "\"https://console.aws.amazon.com/go/view?arn=\" + .ServiceArn",
+                "desiredCount": ".DesiredCount",
+                "launchType": ".LaunchType",
+                "cluster": ".Cluster | split(\"/\")[-1]",
+                "schedulingStrategy": ".SchedulingStrategy",
+                "loadBalancers": ".LoadBalancers",
+                "securityGroups": ".NetworkConfiguration.AwsvpcConfiguration.SecurityGroups",
+                "subnets": ".NetworkConfiguration.AwsvpcConfiguration.Subnets",
+                "taskDefinition": ".TaskDefinition | split(\"/\")[-1]",
+                "iamRole": ".Role | if . == null then null else \"https://console.aws.amazon.com/go/view?arn=\" + . end",
+                "arn": ".ServiceArn"
+              },
+              "relations": {
+                "region": ".ServiceArn | split(\":\")[3]",
+                "microservice": ".ServiceName"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "AWS::Lambda::Function",
+      "port": {
+        "entity": {
+          "mappings": [
+            {
+              "identifier": ".FunctionName",
+              "title": ".FunctionName",
+              "blueprint": "lambda",
+              "properties": {
+                "link": "\"https://console.aws.amazon.com/go/view?arn=\" + .Arn",
+                "description": ".Description",
+                "memorySize": ".MemorySize",
+                "ephemeralStorageSize": ".EphemeralStorage.Size",
+                "timeout": ".Timeout",
+                "runtime": ".Runtime",
+                "packageType": ".PackageType",
+                "environment": ".Environment",
+                "architectures": ".Architectures",
+                "layers": ".Layers",
+                "tags": ".Tags",
+                "iamRole": ".Role | if . == null then null else \"https://console.aws.amazon.com/go/view?arn=\" + . end",
+                "arn": ".Arn"
+              },
+              "relations": {
+                "region": ".Arn | split(\":\")[3]",
+                "microservice": ".Tags | if isempty(.[] | select(.Key == \"melio:serviceName\" or .Key == \"service\")) then null else .[] | select(.Key == \"melio:serviceName\" or .Key == \"service\") | .Value end"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "AWS::SQS::Queue",
+      "port": {
+        "entity": {
+          "mappings": [
+            {
+              "identifier": ".QueueName",
+              "title": ".QueueName",
+              "blueprint": "sqs",
+              "properties": {
+                "link": "\"https://console.aws.amazon.com/go/view?arn=\" + .Arn",
+                "fifoQueue": ".FifoQueue // false",
+                "visibilityTimeout": ".VisibilityTimeout",
+                "messageRetentionPeriod": ".MessageRetentionPeriod",
+                "maximumMessageSize": ".MaximumMessageSize",
+                "receiveMessageWaitTimeSeconds": ".ReceiveMessageWaitTimeSeconds",
+                "delaySeconds": ".DelaySeconds",
+                "tags": ".Tags",
+                "arn": ".Arn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "AWS::SNS::Topic",
+      "port": {
+        "entity": {
+          "mappings": [
+            {
+              "identifier": ".TopicName",
+              "title": ".TopicName",
+              "blueprint": "sns",
+              "properties": {
+                "link": "\"https://console.aws.amazon.com/go/view?arn=\" + .TopicArn",
+                "fifoTopic": ".FifoTopic // false",
+                "subscriptions": ".Subscription",
+                "tags": ".Tags",
+                "arn": ".TopicArn"
+              },
+              "relations": {
+                "sqs": ".Subscription // [] | map(select(.Protocol == \"sqs\") | .Endpoint | split(\":\")[-1])"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "AWS::S3::Bucket",
+      "port": {
+        "entity": {
+          "mappings": [
+            {
+              "identifier": ".BucketName",
+              "title": ".BucketName",
+              "blueprint": "s3",
+              "properties": {
+                "link": "\"https://console.aws.amazon.com/go/view?arn=\" + .Arn",
+                "regionalDomainName": ".RegionalDomainName",
+                "versioningStatus": ".VersioningConfiguration.Status",
+                "encryption": ".BucketEncryption.ServerSideEncryptionConfiguration",
+                "lifecycleRules": ".LifecycleConfiguration.Rules",
+                "publicAccess": ".PublicAccessBlockConfiguration",
+                "tags": ".Tags",
+                "arn": ".Arn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "AWS::CloudFormation::Stack",
+      "port": {
+        "entity": {
+          "mappings": [
+            {
+              "identifier": ".StackName",
+              "title": ".StackName",
+              "blueprint": "cloudFormationStack",
+              "properties": {
+                "lastUpdated": ".LastUpdatedTime",
+                "resources": ".StackResources",
+                "createdAt": ".CreationTime",
+                "status": ".StackStatus",
+                "link": "\"https://console.aws.amazon.com/go/view?arn=\" + .StackId",
+                "template": ".TemplateBody",
+                "tags": ".Tags"
+              }, "relations": {
+                "lambdas": ".StackResources // [] | map(select(.ResourceType == \"AWS::Lambda::Function\")) | if . == [] then [] else .[].PhysicalResourceId end",
+                "microservice" : ".Tags // [] | map(select(.Key == \"melio:serviceName\")) | if . == [] then null else .[0].Value end",
+                "ecs": ".StackResources // [] | map(select(.ResourceType == \"AWS::ECS::Service\")) | if . == [] then [] else .[].PhysicalResourceId end"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
